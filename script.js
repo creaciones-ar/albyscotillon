@@ -1,181 +1,72 @@
-document.addEventListener("DOMContentLoaded", function () {
-    const welcomeScreen = document.getElementById("welcome-screen");
-    const openBtn = document.getElementById("open-btn");
-    const music = document.getElementById("background-music");
-    const mainContent = document.getElementById("main-content");
+/* ==========================================================
+   EDITÁ SOLO ESTA PARTE PARA ACTUALIZAR LA PÁGINA
+   ========================================================== */
+const WHATSAPP = "5491121825254";
+const PRECIOS_ACTUALIZADOS = "Octubre 2026"; // cambialo cuando toques los precios
 
-    const playBtn = document.getElementById("play-btn");
-    const prevBtn = document.getElementById("prev-btn");
-    const nextBtn = document.getElementById("next-btn");
-    const player = document.querySelector(".music-player");
-    const progress = document.getElementById("progress");
-    const progressBar = document.getElementById("progress-bar");
+// Precios de EJEMPLO: reemplazalos por los tuyos. Usá números sin puntos.
+const PLANES = [
+  { nombre: "Básica",   precio: 0, destacado: false,
+    items: ["Sobre animado", "Cuenta regresiva", "Ubicación con mapa", "Confirmación por WhatsApp"] },
+  { nombre: "Completa", precio: 0, destacado: true,
+    items: ["Todo lo de Básica", "Música de fondo", "Galería de fotos", "Datos de regalos / alias"] },
+  { nombre: "Premium",  precio: 0, destacado: false,
+    items: ["Todo lo de Completa", "Álbum compartido con QR", "Diseño a medida", "Entrega prioritaria"] },
+];
 
-    // =====================================================
-    //  TAMAÑO DE LA LETRA DEL MENSAJE ("Hoy dejo atrás...")
-    //  Cambiá solo este número:
-    //    1   = el texto ocupa el mismo alto que las fotos (letra chica)
-    //    1.5 = letra más grande (valor actual)
-    //    1.8 = todavía más grande
-    //    2   = bien grande
-    // =====================================================
-    const MESSAGE_SCALE = 1;
+// Para agregar un modelo, sumá una línea. "tipo" puede ser: "bodas", "xv" o "infantiles".
+const MODELOS = [
+  { tipo: "xv",         nombre: "Mis XV Vanessa",  demo: "https://creaciones-ar.github.io/INVITACION-1/" },
+  { tipo: "infantiles", nombre: "Mis 13 Liliana",  demo: "https://creaciones-ar.github.io/INVITACION-VANESSA/" },
+];
 
-    // Diagnóstico: abrí la página con ?debug=1 al final del link para ver el error de audio
-    function debugMsg(text) {
-        if (!/[?&]debug/.test(location.search)) return;
-        const hint = document.querySelector(".player-hint");
-        if (hint) { hint.textContent = text; hint.style.color = "#b00020"; }
-    }
+const CATEGORIAS = [
+  { id: "bodas",      titulo: "Bodas",      texto: "Para el día en que se dicen que sí." },
+  { id: "xv",         titulo: "XV años",    texto: "Una entrada de película para la quinceañera." },
+  { id: "infantiles", titulo: "Infantiles", texto: "Cumpleaños y fiestas con mucho color." },
+];
 
-    // ---------- ABRIR EL SOBRE ----------
-    if (openBtn) {
-        openBtn.addEventListener("click", function () {
-            if (music) {
-                music.play().catch(function (error) {
-                    console.log("No se pudo reproducir la música:", error);
-                    debugMsg("play() falló: " + error.name);
-                    syncPlayerState();
-                });
-            }
-            welcomeScreen.classList.add("hidden");
-            mainContent.classList.remove("hidden");
-            document.body.classList.remove("welcome-active");
-            window.scrollTo(0, 0);
-            requestAnimationFrame(fitAll);
-        });
-    }
+const FAQ = [
+  ["¿Cuánto tarda en estar lista?", "Escribinos con los datos del evento y te avisamos el plazo según la agenda del momento."],
+  ["¿Cómo la reciben mis invitados?", "Te damos un link y lo reenviás por WhatsApp a todos, sin límite de invitados."],
+  ["¿Puedo cambiar algo después?", "Sí, consultanos y lo ajustamos."],
+  ["¿Cómo se paga?", "Coordinamos el pago por WhatsApp."],
+];
+/* ================== FIN DE LO EDITABLE ================== */
 
-    // ---------- TÍTULOS QUE SE AJUSTAN AL ANCHO ----------
-    // Cada título con data-fit queda en un solo renglón; los del mismo grupo usan el mismo tamaño.
-    function fitTitles() {
-        const groups = {};
-        document.querySelectorAll("[data-fit]").forEach(function (el) {
-            (groups[el.dataset.fit] = groups[el.dataset.fit] || []).push(el);
-        });
-        Object.keys(groups).forEach(function (name) {
-            const list = groups[name];
-            let best = Infinity;
-            list.forEach(function (el) {
-                const parent = el.parentElement;
-                const cs = getComputedStyle(parent);
-                const avail = (parent.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)) * 0.98;
-                if (avail <= 0) return;                       // sección oculta todavía
-                let lo = parseFloat(el.dataset.min || 18);
-                let hi = parseFloat(el.dataset.max || 80);
-                for (let i = 0; i < 14; i++) {
-                    const mid = (lo + hi) / 2;
-                    el.style.fontSize = mid + "px";
-                    if (el.offsetWidth <= avail) lo = mid; else hi = mid;
-                }
-                best = Math.min(best, lo);
-            });
-            if (best !== Infinity) list.forEach(function (el) { el.style.fontSize = best + "px"; });
-        });
-    }
-    // ---------- MENSAJE: tamaño de letra según el alto de las fotos ----------
-    function fitMessage() {
-        document.querySelectorAll(".hero-side").forEach(function (row) {
-            const text = row.querySelector(".message-text");
-            const stack = row.querySelector(".polaroid-stack");
-            if (!text || !stack) return;
-            const target = stack.offsetHeight * MESSAGE_SCALE;
-            if (target <= 0) return;                          // sección oculta todavía
-            let lo = 14, hi = 48;
-            for (let i = 0; i < 14; i++) {
-                const mid = (lo + hi) / 2;
-                text.style.fontSize = mid + "px";
-                if (text.offsetHeight <= target) lo = mid; else hi = mid;
-            }
-            text.style.fontSize = lo + "px";
-        });
-    }
-    function fitAll() { fitTitles(); fitMessage(); }
+const wa = (txt) => `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(txt)}`;
+const pesos = (n) => n > 0 ? "$" + n.toLocaleString("es-AR") : "Consultar";
 
-    let fitTimer;
-    window.addEventListener("resize", function () {
-        clearTimeout(fitTimer);
-        fitTimer = setTimeout(fitAll, 120);
-    });
-    if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitAll);
-    window.addEventListener("load", fitAll);
+["hero", "footer", "flotante"].forEach(id =>
+  document.getElementById("cta-" + id).href = wa("Hola Albys Cotillón! Quiero consultar por una invitación digital."));
 
-    // ---------- REPRODUCTOR ----------
-    function syncPlayerState() {
-        if (!player || !music) return;
-        player.classList.toggle("is-playing", !music.paused);
-    }
+document.getElementById("fecha-precios").textContent = "Precios actualizados: " + PRECIOS_ACTUALIZADOS;
 
-    if (music) {
-        // "playing" = suena de verdad (no solo se pidió reproducir)
-        music.addEventListener("playing", syncPlayerState);
-        music.addEventListener("pause", syncPlayerState);
-        music.addEventListener("ended", syncPlayerState);
-        music.addEventListener("error", function () {
-            player.classList.remove("is-playing");
-            console.error("No se pudo cargar musica.mp3. Revisá que el archivo exista y sea un MP3 válido.", music.error);
-            debugMsg("Error de audio, código " + (music.error ? music.error.code : "?") + " (4 = archivo no encontrado o formato no válido)");
-        });
+const tarjeta = (m) => `
+  <article class="modelo">
+    <div class="celu"><iframe src="${m.demo}" title="Demo ${m.nombre}" loading="lazy"></iframe></div>
+    <h3>${m.nombre}</h3>
+    <a href="${m.demo}" target="_blank" rel="noopener">Abrir en pantalla completa</a><br>
+    <a href="${wa('Hola! Me gusta el modelo ' + m.nombre + ', quiero una así.')}">Quiero este</a>
+  </article>`;
 
-        // Barra de progreso
-        music.addEventListener("timeupdate", function () {
-            if (!music.duration) return;
-            progressBar.style.width = (music.currentTime / music.duration) * 100 + "%";
-        });
-    }
+document.getElementById("secciones").innerHTML = CATEGORIAS.map((c, i) => {
+  const lista = MODELOS.filter(m => m.tipo === c.id);
+  const cuerpo = lista.length
+    ? lista.map(tarjeta).join("")
+    : `<p class="vacio">Estamos preparando modelos de ${c.titulo.toLowerCase()}. <a href="${wa('Hola! Quiero ver modelos de ' + c.titulo.toLowerCase() + '.')}">Escribinos y te mostramos</a>.</p>`;
+  return `<section id="${c.id}"${i % 2 ? ' class="alt"' : ""}>
+    <h2>${c.titulo}</h2><p class="sub">${c.texto}</p>
+    <div class="modelos">${cuerpo}</div></section>`;
+}).join("");
 
-    if (playBtn) {
-        playBtn.addEventListener("click", function () {
-            if (music.paused) {
-                music.play().catch(function (e) { console.log(e); debugMsg("play() falló: " + e.name); syncPlayerState(); });
-            } else {
-                music.pause();
-            }
-        });
-    }
+document.getElementById("lista-planes").innerHTML = PLANES.map(p => `
+  <article class="plan${p.destacado ? " destacado" : ""}">
+    <h3>${p.nombre}</h3>
+    <div class="precio">${pesos(p.precio)}</div>
+    <ul>${p.items.map(i => `<li>${i}</li>`).join("")}</ul>
+    <a class="btn" href="${wa('Hola! Me interesa el plan ' + p.nombre + '.')}">Elegir ${p.nombre}</a>
+  </article>`).join("");
 
-    // Anterior / siguiente: reinician la canción (hay un solo tema)
-    [prevBtn, nextBtn].forEach(function (btn) {
-        if (btn) btn.addEventListener("click", function () { music.currentTime = 0; });
-    });
-
-    // Tocar la barra para saltar a ese punto de la canción
-    if (progress) {
-        progress.addEventListener("click", function (e) {
-            if (!music.duration) return;
-            const rect = progress.getBoundingClientRect();
-            music.currentTime = ((e.clientX - rect.left) / rect.width) * music.duration;
-        });
-    }
-
-    // ---------- CUENTA REGRESIVA ----------
-    const daysEl = document.getElementById("days");
-    const hoursEl = document.getElementById("hours");
-    const minutesEl = document.getElementById("minutes");
-
-    // 14 de noviembre de 2026, 21:00 (Argentina)
-    const eventDate = new Date("2026-11-14T21:00:00-03:00").getTime();
-    const pad = function (n) { return String(n).padStart(2, "0"); };
-
-    function updateCountdown() {
-        const diff = eventDate - Date.now();
-
-        if (diff <= 0) {
-            daysEl.textContent = "0";
-            hoursEl.textContent = "00";
-            minutesEl.textContent = "00";
-            return;
-        }
-
-        const days = Math.floor(diff / 86400000);
-        const hours = Math.floor((diff % 86400000) / 3600000);
-        const minutes = Math.floor((diff % 3600000) / 60000);
-
-        daysEl.textContent = days;
-        hoursEl.textContent = pad(hours);
-        minutesEl.textContent = pad(minutes);
-    }
-
-    updateCountdown();
-    setInterval(updateCountdown, 1000);
-});
+document.getElementById("lista-faq").innerHTML = FAQ.map(([q, a]) =>
+  `<details><summary>${q}</summary><p>${a}</p></details>`).join("");
